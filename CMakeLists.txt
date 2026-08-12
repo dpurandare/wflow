@@ -26,6 +26,7 @@ endif()
 add_executable(wflow WIN32
     src/main.cpp
     src/app/App.cpp
+    src/app/resources.rc
     src/audio/AudioCapture.cpp
     src/stt/Transcriber.cpp
     src/stt/ModelBootstrap.cpp

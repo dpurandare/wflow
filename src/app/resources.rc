@@ -1,0 +1,5 @@
+#include "resource.h"
+
+IDI_APP_ICON        ICON "../../resources/icons/app.ico"
+IDI_TRAY_IDLE        ICON "../../resources/icons/tray_idle.ico"
+IDI_TRAY_LISTENING   ICON "../../resources/icons/tray_listening.ico"

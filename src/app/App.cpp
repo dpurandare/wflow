@@ -2,6 +2,8 @@
 
 #include <shellapi.h>
 
+#include "app/resource.h"
+
 namespace wflow {
 
 constexpr wchar_t App::kWindowClassName[];
@@ -43,6 +45,8 @@ bool App::InitializeWindow() {
     wc.lpfnWndProc = &App::WndProc;
     wc.hInstance = instance_;
     wc.lpszClassName = kWindowClassName;
+    wc.hIcon = LoadIconW(instance_, MAKEINTRESOURCE(IDI_APP_ICON));
+    wc.hIconSm = wc.hIcon;
 
     if (RegisterClassExW(&wc) == 0) {
         return false;
@@ -80,17 +84,17 @@ bool App::InitializeComponents() {
         settings_.whisperThreads = 4;
     }
 
-#if defined(WFLOW_USE_WHISPERCPP) && WFLOW_USE_WHISPERCPP
-    if (!EnsureWhisperModelReady()) {
-        return false;
-    }
-#endif
-
     if (!trayIcon_.Create(hwnd_, kTrayMessage)) {
         return false;
     }
 
     trayIcon_.SetHotkeyText(HotkeyToString(settings_.holdToTalkHotkey));
+
+#if defined(WFLOW_USE_WHISPERCPP) && WFLOW_USE_WHISPERCPP
+    if (!EnsureWhisperModelReady()) {
+        return false;
+    }
+#endif
 
     if (!hotkeyManager_.Start(
             hwnd_,
@@ -178,6 +182,7 @@ bool App::EnsureWhisperModelReady() {
         }
 
         (void)settingsStore_.Save(settings_);
+        trayIcon_.ShowBalloon(L"wflow", L"Model downloaded. wflow is ready — hold your hotkey to dictate.");
         return true;
     }
 
@@ -282,6 +287,8 @@ void App::UpdateState(AppState newState) {
 }
 
 void App::UpdateTrayStatus() {
+    trayIcon_.SetListening(state_ == AppState::Listening);
+
     switch (state_) {
     case AppState::InitializingModel:
         trayIcon_.SetStatusText(L"Initializing");
@@ -477,6 +484,7 @@ void App::OnModelDownloadCompleted() {
     const AppSettings previous = settings_;
     ReinitializeTranscriberOrShowError(previous);
     UpdateTrayStatus();
+    trayIcon_.ShowBalloon(L"wflow", L"Model downloaded. wflow is ready — hold your hotkey to dictate.");
 #endif
 }
 

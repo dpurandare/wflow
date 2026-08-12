@@ -19,6 +19,8 @@ public:
 
     void SetStatusText(const std::wstring& status);
     void SetHotkeyText(const std::wstring& hotkey);
+    void SetListening(bool isListening);
+    void ShowBalloon(const std::wstring& title, const std::wstring& message);
     void ShowContextMenu(HWND owner, POINT cursorPosition);
 
 private:
@@ -28,6 +30,9 @@ private:
     std::wstring statusText_ = L"Initializing";
     std::wstring hotkeyText_ = L"Ctrl + Alt + Z";
     bool created_ = false;
+    bool listening_ = false;
+    HICON idleIcon_ = nullptr;
+    HICON listeningIcon_ = nullptr;
 };
 
 }  // namespace wflow

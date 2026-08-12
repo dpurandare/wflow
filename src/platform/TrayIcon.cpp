@@ -2,16 +2,22 @@
 
 #include <shellapi.h>
 
+#include "app/resource.h"
+
 namespace wflow {
 
 bool TrayIcon::Create(HWND hwnd, UINT callbackMessage) {
+    HINSTANCE moduleInstance = GetModuleHandleW(nullptr);
+    idleIcon_ = LoadIconW(moduleInstance, MAKEINTRESOURCE(IDI_TRAY_IDLE));
+    listeningIcon_ = LoadIconW(moduleInstance, MAKEINTRESOURCE(IDI_TRAY_LISTENING));
+
     nid_ = {};
     nid_.cbSize = sizeof(nid_);
     nid_.hWnd = hwnd;
     nid_.uID = 1;
     nid_.uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
     nid_.uCallbackMessage = callbackMessage;
-    nid_.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    nid_.hIcon = idleIcon_ ? idleIcon_ : LoadIconW(nullptr, IDI_APPLICATION);
 
     wcscpy_s(nid_.szTip, L"wflow");
 
@@ -30,12 +36,17 @@ void TrayIcon::Destroy() {
     }
 
     Shell_NotifyIconW(NIM_DELETE, &nid_);
-    if (nid_.hIcon) {
-        DestroyIcon(nid_.hIcon);
-        nid_.hIcon = nullptr;
-    }
-
     created_ = false;
+
+    if (idleIcon_) {
+        DestroyIcon(idleIcon_);
+        idleIcon_ = nullptr;
+    }
+    if (listeningIcon_) {
+        DestroyIcon(listeningIcon_);
+        listeningIcon_ = nullptr;
+    }
+    nid_.hIcon = nullptr;
 }
 
 void TrayIcon::SetStatusText(const std::wstring& status) {
@@ -45,6 +56,26 @@ void TrayIcon::SetStatusText(const std::wstring& status) {
 
 void TrayIcon::SetHotkeyText(const std::wstring& hotkey) {
     hotkeyText_ = hotkey;
+}
+
+void TrayIcon::SetListening(bool isListening) {
+    listening_ = isListening;
+    RefreshIcon();
+}
+
+void TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& message) {
+    if (!created_) {
+        return;
+    }
+
+    NOTIFYICONDATAW balloon = nid_;
+    balloon.uFlags = NIF_INFO;
+    balloon.dwInfoFlags = NIIF_INFO;
+    balloon.uTimeout = 4000;
+    wcsncpy_s(balloon.szInfoTitle, title.c_str(), _TRUNCATE);
+    wcsncpy_s(balloon.szInfo, message.c_str(), _TRUNCATE);
+
+    Shell_NotifyIconW(NIM_MODIFY, &balloon);
 }
 
 void TrayIcon::ShowContextMenu(HWND owner, POINT cursorPosition) {
@@ -91,6 +122,7 @@ void TrayIcon::RefreshIcon() {
 
     std::wstring tooltip = L"wflow - " + statusText_;
     wcsncpy_s(nid_.szTip, tooltip.c_str(), _TRUNCATE);
+    nid_.hIcon = (listening_ && listeningIcon_) ? listeningIcon_ : idleIcon_;
 
     Shell_NotifyIconW(NIM_MODIFY, &nid_);
 }
