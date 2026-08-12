@@ -3,6 +3,10 @@
 #include <string>
 #include <vector>
 
+#if defined(WFLOW_USE_WHISPERCPP) && WFLOW_USE_WHISPERCPP
+struct whisper_context;
+#endif
+
 namespace wflow {
 
 struct TranscriberConfig {
