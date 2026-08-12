@@ -1,0 +1,17 @@
+build/
+build-arm64/
+packaging/msix/staging/
+packaging/msix/out/
+.vs/
+.vscode/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.lib
+*.exp
+*.log
