@@ -37,6 +37,7 @@ Initial development and validation is being done on ARM64 Windows. The project c
 - Windows 10/11 SDK with:
 	- makeappx.exe
 	- signtool.exe
+- For ARM64 builds with `WFLOW_USE_WHISPERCPP=ON` (see below): the **Clang** toolchain via Visual Studio Installer
 
 ## Build from source
 
@@ -65,6 +66,27 @@ Run:
 ```powershell
 .\build-x64\Release\wflow.exe
 ```
+
+### Enabling whisper.cpp on ARM64 (Clang toolchain required)
+
+`WFLOW_USE_WHISPERCPP` is `OFF` by default. Turning it on pulls in whisper.cpp (via `FetchContent`) to enable real local transcription instead of the no-op stub.
+
+On ARM64, whisper.cpp's ggml CPU backend does not support MSVC (`cl.exe`) — it requires **Clang**. `cl.exe` fails to configure with `MSVC is not supported for ARM, use clang`. This is unrelated to `scripts/build.ps1`, which does not currently expose these flags, so configure manually:
+
+1. In Visual Studio Installer, modify your install and add these **Individual components**:
+   - **C++ Clang Compiler for Windows** (provides `clang-cl.exe`)
+   - **MSBuild support for LLVM (clang-cl) toolset** (both are required — the first alone is not enough to build; MSBuild needs the second to know how to invoke it)
+
+2. Configure with the `ClangCL` platform toolset and the flag enabled:
+
+   ```powershell
+   cmake -S . -B build-arm64 -G "Visual Studio 18 2026" -A ARM64 -T ClangCL -DWFLOW_USE_WHISPERCPP=ON
+   cmake --build build-arm64 --config Release
+   ```
+
+   If `build-arm64` was previously configured with a different toolset (e.g. plain MSVC), delete the directory first — CMake will not let you switch toolsets in place.
+
+x64 does not have this restriction; MSVC builds whisper.cpp fine there, so `-T ClangCL` is not needed for x64.
 
 ## Using the app
 
