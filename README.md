@@ -1,6 +1,10 @@
 # wflow
 
+[![GitHub repo](https://img.shields.io/badge/GitHub-dpurandare%2Fwflow-blue?logo=github)](https://github.com/dpurandare/wflow)
+
 wflow is an offline voice-to-text tray app for Windows. Hold a global hotkey, speak, release, and wflow inserts transcribed text into the focused app.
+
+> **Work in progress.** Development is currently focused on ARM64 Windows; an AMD64 (x64) port is planned as a subsequent step.
 
 Initial development and validation is being done on ARM64 Windows. The project can also be built and packaged for x64 Windows.
 
