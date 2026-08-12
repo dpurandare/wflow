@@ -30,6 +30,52 @@ float ClampSample(float value) {
     return value;
 }
 
+constexpr double kPi = 3.14159265358979323846;
+
+// Windowed-sinc low-pass kernel (Hamming window), normalizedCutoff = cutoffHz / sampleRate.
+std::vector<float> BuildLowPassKernel(double normalizedCutoff, int numTaps) {
+    std::vector<float> kernel(static_cast<size_t>(numTaps));
+    const double center = (numTaps - 1) / 2.0;
+    double sum = 0.0;
+
+    for (int n = 0; n < numTaps; ++n) {
+        const double x = n - center;
+        const double sinc = (x == 0.0) ? 2.0 * normalizedCutoff
+                                        : std::sin(2.0 * kPi * normalizedCutoff * x) / (kPi * x);
+        const double window = 0.54 - 0.46 * std::cos(2.0 * kPi * n / (numTaps - 1));
+        const double value = sinc * window;
+        kernel[static_cast<size_t>(n)] = static_cast<float>(value);
+        sum += value;
+    }
+
+    if (sum != 0.0) {
+        for (float& tap : kernel) {
+            tap = static_cast<float>(tap / sum);
+        }
+    }
+
+    return kernel;
+}
+
+std::vector<float> ApplyFirFilter(const std::vector<float>& input, const std::vector<float>& kernel) {
+    const int numTaps = static_cast<int>(kernel.size());
+    const int half = numTaps / 2;
+    std::vector<float> output(input.size());
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        double acc = 0.0;
+        for (int k = 0; k < numTaps; ++k) {
+            const long long idx = static_cast<long long>(i) + k - half;
+            if (idx >= 0 && idx < static_cast<long long>(input.size())) {
+                acc += static_cast<double>(input[static_cast<size_t>(idx)]) * kernel[static_cast<size_t>(k)];
+            }
+        }
+        output[i] = static_cast<float>(acc);
+    }
+
+    return output;
+}
+
 void AppendSamplesFromBuffer(const BYTE* data,
                              UINT32 frameCount,
                              int channels,
@@ -126,7 +172,21 @@ std::vector<float> AudioCapture::ResampleTo16k(const std::vector<float>& input, 
     }
 
     const double ratio = static_cast<double>(inputSampleRate) / static_cast<double>(kTargetRate);
-    const size_t outputCount = static_cast<size_t>(std::max(1.0, std::floor(input.size() / ratio)));
+
+    std::vector<float> filtered;
+    const std::vector<float>* source = &input;
+    if (ratio > 1.0) {
+        // Downsampling: low-pass below the target Nyquist first, or high-frequency
+        // content aliases into the speech band and badly corrupts transcription.
+        constexpr int kNumTaps = 127;
+        const double cutoffHz = static_cast<double>(kTargetRate) * 0.45;
+        const double normalizedCutoff = cutoffHz / static_cast<double>(inputSampleRate);
+        const std::vector<float> kernel = BuildLowPassKernel(normalizedCutoff, kNumTaps);
+        filtered = ApplyFirFilter(input, kernel);
+        source = &filtered;
+    }
+
+    const size_t outputCount = static_cast<size_t>(std::max(1.0, std::floor(source->size() / ratio)));
 
     std::vector<float> output;
     output.reserve(outputCount);
@@ -134,10 +194,10 @@ std::vector<float> AudioCapture::ResampleTo16k(const std::vector<float>& input, 
     for (size_t i = 0; i < outputCount; ++i) {
         const double sourceIndex = static_cast<double>(i) * ratio;
         const size_t left = static_cast<size_t>(sourceIndex);
-        const size_t right = std::min(left + 1, input.size() - 1);
+        const size_t right = std::min(left + 1, source->size() - 1);
         const double fraction = sourceIndex - static_cast<double>(left);
 
-        const float sample = static_cast<float>((1.0 - fraction) * input[left] + fraction * input[right]);
+        const float sample = static_cast<float>((1.0 - fraction) * (*source)[left] + fraction * (*source)[right]);
         output.push_back(sample);
     }
 
