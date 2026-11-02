@@ -32,16 +32,48 @@ Initial development and validation is being done on ARM64 Windows. The project c
 ## Prerequisites
 
 - Windows 11 (or Windows 10 with compatible SDK)
-- Visual Studio with C++ toolchain
-- CMake (Visual Studio bundled CMake is supported)
-- Windows 10/11 SDK with:
-	- makeappx.exe
-	- signtool.exe
+- Visual Studio with the **Desktop development with C++** workload, including:
+	- MSVC C++ build tools for the target architecture
+	- Windows 11 SDK
+	- C++ CMake tools for Windows
+- CMake 3.20 or newer (the Visual Studio bundled CMake is supported)
+- PowerShell (Windows PowerShell 5.1 or PowerShell 7)
+- Git, only if `WFLOW_USE_WHISPERCPP=ON` is enabled, because CMake downloads
+  whisper.cpp with `FetchContent`
+- Windows 10/11 SDK packaging tools for MSIX creation/signing:
+	- `makeappx.exe`
+	- `signtool.exe`
+
+For the x64 build, select the x64 MSVC tools in Visual Studio. The default
+build has `WFLOW_USE_WHISPERCPP=OFF`, so Git and the Whisper download are not
+needed just to compile the application.
+
 - For ARM64 builds with `WFLOW_USE_WHISPERCPP=ON` (see below): the **Clang** toolchain via Visual Studio Installer
 
 ## Build from source
 
 Run commands from repository root.
+
+### PowerShell execution policy
+
+If PowerShell reports that `scripts\build.ps1` cannot be loaded because running
+scripts is disabled, allow scripts only for the current PowerShell session:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+Then run the build command again. This does not change the machine or user
+execution policy and is reset when the PowerShell window closes.
+
+Alternatively, run the script in a separate process with a one-time bypass:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\build.ps1 `
+	-Architecture x64 `
+	-BuildDir build-x64 `
+	-Configuration Release
+```
 
 ### ARM64 build
 
@@ -163,9 +195,34 @@ x64:
 
 The sign script prompts securely for the PFX password.
 
+For local development, a self-signed certificate can be used. The certificate
+subject must match the package publisher (`CN=YourPublisher`). Windows must
+trust the certificate in the **Local Computer > Trusted People** store;
+installing the certificate by double-clicking it may place it in the wrong
+store. From an elevated PowerShell, run:
+
+```powershell
+$cert = "C:\path\to\wflow-dev-signing.cer"
+certutil.exe -addstore -f TrustedPeople $cert
+certutil.exe -addstore -f Root $cert
+```
+
+The `.cer` file contains only the public certificate and is safe to distribute
+with a development build. Do not distribute the private `.pfx` file. A
+production package should use a certificate issued by a trusted publisher
+instead of a self-signed development certificate.
+
 ### 5) Install
 
-Double-click the signed .msix file, or install with Add-AppxPackage in PowerShell.
+Install the certificate before installing a self-signed package, then run:
+
+```powershell
+Add-AppxPackage `
+  -Path ".\packaging\msix\out\wflow_0.1.0.0_x64.msix"
+```
+
+Alternatively, double-click the signed `.msix` file after the certificate is
+trusted.
 
 ## SDK path override (optional)
 
