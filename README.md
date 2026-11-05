@@ -4,7 +4,7 @@
 
 wflow is an offline voice-to-text tray app for Windows. Hold a global hotkey, speak, release, and wflow inserts transcribed text into the focused app.
 
-> **Work in progress.** Development is currently focused on ARM64 Windows, where wflow is up and running end-to-end (hotkey capture, local whisper.cpp transcription, and text injection). An AMD64 (x64) port is planned as a subsequent step.
+> **Work in progress.** Development is currently focused on ARM64 Windows. A signed x64 installer is available in GitHub Releases; ARM64 builds and packaging are supported, but an ARM64 installer is not currently published.
 
 Initial development and validation is being done on ARM64 Windows. The project can also be built and packaged for x64 Windows.
 
@@ -13,6 +13,33 @@ Initial development and validation is being done on ARM64 Windows. The project c
 - ARM64: primary development target (actively validated)
 - x64: supported build and packaging path
 - x86 (32-bit): not currently validated in this repository
+
+## Install from GitHub Releases
+
+The current release provides a signed installer for Windows x64/AMD64. Download
+both files from the [wflow 0.1.0 x64 release](https://github.com/dpurandare/wflow/releases/tag/v0.1.0-x64):
+
+- [wflow-dev-signing.cer](https://github.com/dpurandare/wflow/releases/download/v0.1.0-x64/wflow-dev-signing.cer) — public development certificate
+- [wflow_0.1.0.0_x64.msix](https://github.com/dpurandare/wflow/releases/download/v0.1.0-x64/wflow_0.1.0.0_x64.msix) — x64 installer
+
+The package uses a self-signed development certificate, not a production
+publisher certificate. Only trust the certificate if you obtained it from the
+official wflow release. To install it, open **PowerShell as Administrator** in
+the folder containing the downloaded certificate and run:
+
+```powershell
+certutil.exe -addstore -f TrustedPeople .\wflow-dev-signing.cer
+certutil.exe -addstore -f Root .\wflow-dev-signing.cer
+```
+
+Then install the application from that folder:
+
+```powershell
+Add-AppxPackage -Path ".\wflow_0.1.0.0_x64.msix"
+```
+
+You can also double-click the `.msix` file after trusting the certificate.
+After installation, launch **wflow** from the Start menu.
 
 ## Current feature status
 
@@ -27,7 +54,7 @@ Initial development and validation is being done on ARM64 Windows. The project c
 - Startup toggle for unpackaged runs (HKCU Run key)
 - Settings window for hotkey, model path, language, threads, startup, and fallback mode
 - Optional whisper.cpp integration via CMake option WFLOW_USE_WHISPERCPP
-- MSIX packaging scripts for ARM64 and x64
+- Signed x64 MSIX installer published in GitHub Releases; ARM64 MSIX packaging scripts
 
 ## Prerequisites
 
